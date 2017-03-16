@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 from PyQt4 import QtGui, QtCore, QtNetwork
-from art_projected_gui.items import ObjectItem, PlaceItem, LabelItem, ProgramItem, PolygonItem
+from art_projected_gui.items import ObjectItem, PlaceItem, LabelItem, ProgramItem, PolygonItem, SquareItem
 import rospy
 from art_projected_gui.helpers import conversions
 from art_msgs.srv import NotifyUserRequest
@@ -302,6 +302,12 @@ class UICore(QtCore.QObject):
 
         PolygonItem(self.scene, caption, obj_coords, poly_points, polygon_changed, fixed)
 
+    def add_square(self, caption, min_x, min_y, square_width, square_height, object_type, square_changed=None):
+
+        # self.scene_items.append(SquareItem(self.scene, caption, min_x, min_y, square_width, square_height, object_type, self.scene_items, square_changed))
+        SquareItem(self.scene, caption, min_x, min_y, square_width, square_height, object_type, self.scene.items,
+                   square_changed)
+
     def clear_places(self):
 
         self.remove_scene_items_by_type(PlaceItem)
@@ -317,3 +323,4 @@ class UICore(QtCore.QObject):
 
         self.remove_scene_items_by_type(PlaceItem)
         self.remove_scene_items_by_type(PolygonItem)
+        self.remove_scene_items_by_type(SquareItem)
