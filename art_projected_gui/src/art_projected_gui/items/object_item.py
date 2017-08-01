@@ -168,8 +168,10 @@ class ObjectItem(Item):
 
             return QtCore.QRectF()
 
-        if self.horizontal:
+        if self.horizontal == 1:
             self.ly = self.m2pix(self.inflate + self.object_type.bbox.dimensions[2])
+        elif self.horizontal == 2:
+            self.lx = self.m2pix(self.inflate + self.object_type.bbox.dimensions[2])
         p = 10.0
         return QtCore.QRectF(-self.lx / 2 - p, -self.ly / 2 - p, self.lx + 2 * p, self.ly + 2 * p)
 

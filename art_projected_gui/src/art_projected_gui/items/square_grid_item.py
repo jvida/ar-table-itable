@@ -249,9 +249,11 @@ class SquareItem(Item):
                     "Object place pose options"),
                     [
                     translate(
-                        "Place item", "Rotate |"),
+                        "Place item", "Vertical"),
                     translate(
-                        "Place item", "Rotate --")
+                        "Place item", "Horizontal --"),
+                    translate(
+                        "Place item", "Horizontal |")
                 ],
                     self.dialog_cb)
 
@@ -387,10 +389,13 @@ class SquareItem(Item):
 
         if corner != "":
 
-            self.object_side_length_x = self.object_type.bbox.dimensions[0] + self.space
-            if not self.horizontal:
+            if self.horizontal == 0:
+                self.object_side_length_x = self.object_type.bbox.dimensions[0] + self.space
+            elif self.horizontal == 2:
+                self.object_side_length_x = self.object_type.bbox.dimensions[2] + self.space
+            if self.horizontal == 0:
                 self.object_side_length_y = self.object_type.bbox.dimensions[1] + self.space
-            else:
+            elif self.horizontal == 1:
                 self.object_side_length_y = self.object_type.bbox.dimensions[2] + self.space
 
             width_count = int(modf(round((((self.max[0] - self.min[0]) - self.space) / self.object_side_length_x), 5))[1])
@@ -526,11 +531,14 @@ class SquareItem(Item):
         self.update()
 
     def dialog_cb(self, idx):
-        if idx == 0:
-            self.horizontal = False
+        if idx == 0:    # vertical 0
+            self.horizontal = 0
             self.point_changed(True, "BR")
-        else:
-            self.horizontal = True
+        elif idx == 1:  # horizontal | 1
+            self.horizontal = 1
+            self.point_changed(True, "BR")
+        else:   # horizontal -- 2
+            self.horizontal = 2
             self.point_changed(True, "BR")
 
     '''

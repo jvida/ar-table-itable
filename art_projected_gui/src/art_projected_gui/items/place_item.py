@@ -25,7 +25,7 @@ class PlaceItem(ObjectItem):
 
     """
 
-    def __init__(self, scene,  caption, x, y, z, quaternion, object_type, object_id=None, place_pose_changed=None, selected=False, fixed=False, txt=True, rot=True, rot_point=None, rotation_changed=None, parent=None, horizontal=False):
+    def __init__(self, scene,  caption, x, y, z, quaternion, object_type, object_id=None, place_pose_changed=None, selected=False, fixed=False, txt=True, rot=True, rot_point=None, rotation_changed=None, parent=None, horizontal=0):
 
         self.in_collision = False
         self.caption = caption

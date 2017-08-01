@@ -849,7 +849,7 @@ class ArtBrain(object):
                                error=ArtBrainErrors.ERROR_PLACE_FAILED)
                 return
 
-    def place_object_to_grid(self, instruction, update_state_manager=True, get_ready_after_place=True):
+    def place_object_to_grid(self, instruction, update_state_manager=True, get_ready_after_place=False):
 
         pose = ArtBrainUtils.get_place_pose(instruction)
 
