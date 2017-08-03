@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from art_msgs.msg import Program, ProgramItem
+from art_msgs.msg import Program, ProgramItem as Pi
 from geometry_msgs.msg import Pose, Polygon
 
 
@@ -13,6 +13,12 @@ class ProgramHelper():
         It only helps to find next block/item id after success or failure (without iterating over all blocks/items).
 
     """
+
+    ITEMS_USING_OBJECT = [Pi.PICK_FROM_POLYGON, Pi.PICK_FROM_FEEDER, Pi.PICK_OBJECT_ID, Pi.PLACE_TO_POSE, Pi.PLACE_TO_GRID, Pi.DRILL_POINTS]
+    ITEMS_USING_POSE = [Pi.PICK_FROM_FEEDER, Pi.PLACE_TO_POSE, Pi.DRILL_POINTS, Pi.PLACE_TO_GRID]
+    ITEMS_USING_POLYGON = [Pi.PICK_FROM_POLYGON, Pi.DRILL_POINTS, Pi.PLACE_TO_GRID]
+    PICK_ITEMS = [Pi.PICK_FROM_POLYGON, Pi.PICK_FROM_FEEDER, Pi.PICK_OBJECT_ID]
+    PLACE_ITEMS = [Pi.PLACE_TO_POSE, Pi.PLACE_TO_GRID]
 
     def __init__(self):
 
@@ -119,25 +125,34 @@ class ProgramHelper():
                         return False
 
                 # at least one 'object' mandatory for following types
-                if item.type in [ProgramItem.PICK_FROM_POLYGON, ProgramItem.PICK_FROM_FEEDER, ProgramItem.PICK_OBJECT_ID] and len(item.object) == 0:
+                if item.type in self.ITEMS_USING_OBJECT:
 
-                    rospy.logerr("Block id: " + str(k) + ", item id: " + str(kk) + " has zero size of 'object' array!")
-                    return False
+                    res = self.get_object(k, kk)
+
+                    if res is None:
+                        rospy.logerr("No 'object' for block id: " + str(k) + ", item id: " + str(kk) + "!")
+                        return False
 
                 # at least one 'pose' mandatory for following types
-                if item.type in [ProgramItem.PICK_FROM_FEEDER, ProgramItem.PLACE_TO_POSE] and len(item.pose) == 0:
+                if item.type in self.ITEMS_USING_POSE:
 
-                    rospy.logerr("Block id: " + str(k) + ", item id: " + str(kk) + " has zero size of 'pose' array!")
-                    return False
+                    res = self.get_pose(k, kk)
+
+                    if res is None:
+                        rospy.logerr("No 'pose' for block id: " + str(k) + ", item id: " + str(kk) + "!")
+                        return False
 
                 # at least one 'polygon' mandatory for following types
-                if item.type in [ProgramItem.PICK_FROM_POLYGON] and len(item.polygon) == 0:
+                if item.type in self.ITEMS_USING_POLYGON:
 
-                    rospy.logerr("Block id: " + str(k) + ", item id: " + str(kk) + " has zero size of 'polygon' array!")
-                    return False
+                    res = self.get_polygon(k, kk)
+
+                    if res is None:
+                        rospy.logerr("No 'polygon' for block id: " + str(k) + ", item id: " + str(kk) + "!")
+                        return False
 
                 # check if PLACE_* instruction has correct ref_id(s) - should be set and point to PICK_*
-                if item.type in [ProgramItem.PLACE_TO_POSE]:
+                if item.type in self.PLACE_ITEMS:
 
                     if len(item.ref_id) == 0:
 
@@ -148,7 +163,7 @@ class ProgramHelper():
 
                         ref_msg = self.get_item_msg(k, ref_id)
 
-                        if ref_msg.type not in [ProgramItem.PICK_FROM_POLYGON, ProgramItem.PICK_FROM_FEEDER, ProgramItem.PICK_OBJECT_ID]:
+                        if ref_msg.type not in self.PICK_ITEMS:
 
                             rospy.logerr("Block id: " + str(k) + ", item id: " + str(kk) + " has ref_id which is not PICK_*!")
                             return False
@@ -265,58 +280,126 @@ class ProgramHelper():
 
     def item_requires_learning(self, block_id, item_id):
 
-        return self.get_item_type(block_id,  item_id) in [ProgramItem.PICK_FROM_POLYGON, ProgramItem.PICK_FROM_FEEDER, ProgramItem.PICK_OBJECT_ID, ProgramItem.PLACE_TO_POSE, ProgramItem.PLACE_TO_GRID]
+        return self.get_item_type(block_id, item_id) in [Pi.PICK_FROM_POLYGON, Pi.PICK_FROM_FEEDER, Pi.PICK_OBJECT_ID, Pi.PLACE_TO_POSE, Pi.PLACE_TO_GRID, Pi.DRILL_POINTS]
 
-    def is_pose_set(self, block_id, item_id):
+    def _check_for_pose(self, msg):
+
+        if msg.type not in self.ITEMS_USING_POSE:
+            raise ValueError("Instruction type " + str(msg.type) + " does not use 'object'.")
+
+    def _check_for_object(self, msg):
+
+        if msg.type not in self.ITEMS_USING_OBJECT:
+
+            raise ValueError("Instruction type " + str(msg.type) + " does not use 'object'.")
+
+    def _check_for_polygon(self, msg):
+
+        if msg.type not in self.ITEMS_USING_POLYGON:
+
+            raise ValueError("Instruction type " + str(msg.type) + " does not use 'polygon'.")
+
+    def get_pose(self, block_id, item_id):
 
         msg = self.get_item_msg(block_id, item_id)
 
-        if msg.type not in [ProgramItem.PICK_FROM_FEEDER, ProgramItem.PLACE_TO_POSE]:
+        self._check_for_pose(msg)
 
-            raise ValueError("Instruction type " + str(msg.type) + " does not use 'pose'.")
+        if len(msg.pose) > 0:
 
-        if len(msg.pose) == 0:
+            return msg.pose, item_id
 
-            raise ValueError("Array 'pose' is empty.")
+        for ref_id in msg.ref_id:
 
-        for pose in msg.pose:
-            if pose.pose == Pose():
+            try:
+                ret = self.get_pose(block_id, ref_id)
+            except ValueError:
+                continue
+
+            if ret is not None:
+                return ret
+
+        return None
+
+    def get_object(self, block_id, item_id):
+
+        msg = self.get_item_msg(block_id, item_id)
+
+        self._check_for_object(msg)
+
+        if len(msg.object) > 0:
+
+            return msg.object, item_id
+
+        for ref_id in msg.ref_id:
+
+            try:
+                ret = self.get_object(block_id, ref_id)
+            except ValueError:
+                continue
+
+            if ret is not None:
+                return ret
+
+        return None
+
+    def get_polygon(self, block_id, item_id):
+
+        msg = self.get_item_msg(block_id, item_id)
+
+        self._check_for_polygon(msg)
+
+        if len(msg.polygon) > 0:
+
+            return msg.polygon, item_id
+
+        for ref_id in msg.ref_id:
+
+            try:
+                ret = self.get_polygon(block_id, ref_id)
+            except ValueError:
+                continue
+
+            if ret is not None:
+                return ret
+
+        return None
+
+    def is_pose_set(self, block_id, item_id):
+
+        ret = self.get_pose(block_id, item_id)
+
+        if ret is None:
+            return ValueError("'pose' does not exist in item or its refs.")
+
+        for p in ret[0]:
+            if p.pose == Pose():
                 return False
 
         return True
 
     def is_object_set(self, block_id, item_id):
 
-        msg = self.get_item_msg(block_id, item_id)
+        ret = self.get_object(block_id, item_id)
 
-        if msg.type not in [ProgramItem.PICK_FROM_POLYGON, ProgramItem.PICK_FROM_FEEDER, ProgramItem.PICK_OBJECT_ID, ProgramItem.PLACE_TO_POSE, ProgramItem.PLACE_TO_GRID]:
+        if ret is None:
+            return ValueError("'object' does not exist in item or its refs.")
 
-            raise ValueError("Instruction type " + str(msg.type) + " does not use 'object'.")
-
-        if len(msg.object) == 0:
-
-            raise ValueError("Array 'object' is empty.")
-
-        for object in msg.object:
-            if object == "":
+        for obj in ret[0]:
+            if obj == "":
                 return False
 
         return True
 
     def is_polygon_set(self, block_id, item_id):
 
-        msg = self.get_item_msg(block_id, item_id)
+        ret = self.get_polygon(block_id, item_id)
 
-        if msg.type not in [ProgramItem.PICK_FROM_POLYGON, ProgramItem.PLACE_TO_GRID]:
+        if ret is None:
+            return ValueError("'polygon' does not exist in item or its refs.")
 
-            raise ValueError("Instruction type " + str(msg.type) + " does not use 'polygon'.")
-
-        if len(msg.polygon) == 0:
-
-            raise ValueError("Array 'polygon' is empty.")
-
-        for p in msg.polygon:
-            if p.polygon == Polygon():
+        for poly in ret[0]:
+            if poly.polygon == Polygon():
                 return False
 
         return True
@@ -343,6 +426,12 @@ class ProgramHelper():
 
         return True
 
+    def item_has_nothing_to_set(self, block_id, item_id):
+
+        msg = self.get_item_msg(block_id, item_id)
+
+        return len(msg.object) == 0 and len(msg.pose) == 0 and len(msg.polygon) == 0
+
     def item_learned(self, block_id, item_id):
 
         if not self.item_requires_learning(block_id, item_id):
@@ -350,39 +439,16 @@ class ProgramHelper():
 
         msg = self.get_item_msg(block_id, item_id)
 
-        if msg.type == ProgramItem.PICK_FROM_POLYGON:
+        arr = ((self.ITEMS_USING_POLYGON, self.is_polygon_set), (self.ITEMS_USING_POSE, self.is_pose_set), (self.ITEMS_USING_OBJECT, self.is_object_set))
 
-            if not (self.is_object_set(block_id, item_id) and self.is_polygon_set(block_id, item_id)):
-                return False
-            else:
-                return True
+        for ar in arr:
 
-        elif msg.type in [ProgramItem.PICK_FROM_FEEDER]:
+            if msg.type in ar[0]:
 
-            if not (self.is_object_set(block_id, item_id) and self.is_pose_set(block_id, item_id)):
-                return False
-            else:
-                return True
+                if not ar[1](block_id, item_id):
+                    return False
 
-        elif msg.type in [ProgramItem.PLACE_TO_POSE]:
+        # TODO how and where to detect non-supported types?
+        # raise NotImplementedError("Not yet supported item type.")
 
-            if not self.is_pose_set(block_id, item_id):
-                return False
-            else:
-                return True
-
-        elif msg.type == ProgramItem.PICK_OBJECT_ID:
-
-            if not (self.is_object_set(block_id, item_id)):
-                return False
-            else:
-                return True
-
-        elif msg.type == ProgramItem.PLACE_TO_GRID:
-
-            if not self.is_polygon_set(block_id, item_id) or len(msg.pose) == 0:
-                return False
-            else:
-                return True
-
-        raise NotImplementedError("Not yet supported item type.")
+        return True

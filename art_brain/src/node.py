@@ -1253,8 +1253,16 @@ class ArtBrain(object):
             rospy.loginfo('Not ready for learning start!')
             return resp
 
+        program = self.art.load_program(req.program_id)
+
+        if not self.ph.load(program):
+            resp.success = False
+            resp.error = 'Cannot get program.'
+            return resp
+
         rospy.loginfo('Starting learning')
-        self.state_manager.state.program_id = req.program_id
+        (self.block_id, item_id) = self.ph.get_first_item_id()
+        self.state_manager.update_program_item(req.program_id, self.block_id, self.ph.get_item_msg(self.block_id, item_id), auto_send=False)
         self.state_manager.set_system_state(InterfaceState.STATE_LEARNING)
         resp.success = True
         self.fsm.learning_start()
@@ -1304,8 +1312,7 @@ class ArtBrain(object):
     def motors_halted_cb(self, req):
         if not self.initialized:
             return
-        rospy.loginfo(str(req.data))
-        self.motors_halted = req.data
+
         if self.motors_halted and not req.data:
             if self.gripper_usage == ArtGripper.GRIPPER_LEFT:
                 self.left_gripper.get_ready()
@@ -1314,6 +1321,8 @@ class ArtBrain(object):
             elif self.gripper_usage == ArtGripper.GRIPPER_BOTH:
                 self.left_gripper.get_ready()
                 self.right_gripper.get_ready()
+
+        self.motors_halted = req.data
 
     def projectors_calibrated_cb(self, msg):
 

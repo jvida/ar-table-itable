@@ -25,7 +25,7 @@ class PlaceItem(ObjectItem):
 
     """
 
-    def __init__(self, scene,  caption, x, y, z, quaternion, object_type, object_id=None, place_pose_changed=None, selected=False, fixed=False, txt=True, rot=True, rot_point=None, rotation_changed=None, parent=None, horizontal=0):
+    def __init__(self, scene, caption, x, y, z, quaternion, object_type, object_id=None, place_pose_changed=None, selected=False, fixed=False, txt=True, rot=True, rot_point=None, rotation_changed=None, parent=None, horizontal=0):
 
         self.in_collision = False
         self.caption = caption
@@ -36,7 +36,7 @@ class PlaceItem(ObjectItem):
         self.rot_point = rot_point
         self.other_items = []
 
-        super(PlaceItem, self).__init__(scene, object_id, object_type,  x, y, z, quaternion, parent=parent, horizontal=horizontal)
+        super(PlaceItem, self).__init__(scene, object_id, object_type, x, y, z, quaternion, parent=parent, horizontal=horizontal)
 
         self.update_text()
         self.fixed = fixed
@@ -47,22 +47,22 @@ class PlaceItem(ObjectItem):
             self.set_color(QtCore.Qt.white)
             if self.rot:
                 if rot_point is None:
-                    self.point = PointItem(scene, 0, 0, self,  self.point_changed)  # TODO option to pass pixels?
+                    self.point = PointItem(scene, 0, 0, self, self.point_changed)  # TODO option to pass pixels?
                     self.point.setPos(self.boundingRect().topLeft())
 
                     self.dialog = DialogItem(self.scene(),
-                                     self.pix2m(self.scene().width() / 2),
-                                     0.1,
-                                     translate(
-                                         "Place item",
-                                         "Object place pose options"),
-                                     [
-                                         translate(
-                                             "Place item", "Rotate |"),
-                                         translate(
-                                             "Place item", "Rotate --")
-            ],
-                self.dialog_cb)
+                                             self.pix2m(self.scene().width() / 2),
+                                             0.1,
+                                             translate(
+                        "Place item",
+                        "Object place pose options"),
+                        [
+                        translate(
+                            "Place item", "Rotate |"),
+                        translate(
+                            "Place item", "Rotate --")
+                    ],
+                        self.dialog_cb)
 
                 else:
                     self.point = PointItem(scene, self.rot_point[0], self.rot_point[1], self, self.point_changed)
@@ -141,6 +141,7 @@ class PlaceItem(ObjectItem):
     '''
         Method which updates the position of attribute "rot_point" (instance of PointItem class).
     '''
+
     def update_point(self):
 
         if self.rot_point is None:
@@ -207,7 +208,6 @@ class PlaceItem(ObjectItem):
             for it in self.other_items:
                 it.setRotation(self.rotation())
 
-
         self._update_desc_pos()
 
         if finished:
@@ -257,5 +257,6 @@ class PlaceItem(ObjectItem):
     '''
         Method which sets attribute "other_items".
     '''
+
     def set_other_items(self, items):
         self.other_items = items
